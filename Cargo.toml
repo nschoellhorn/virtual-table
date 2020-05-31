@@ -1,0 +1,11 @@
+[package]
+name = "virtual-table"
+description = "Data structure to model relational database tables in-memory"
+version = "0.1.0"
+authors = ["Niklas Schöllhorn <schoellhorn.niklas@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+uuid = { version = "0.8", features = ["serde", "v4"] }
+linked-hash-map = "0.5.3"
+prettytable-rs = { git = "https://github.com/nschoellhorn/prettytable-rs", branch = "fix-empty-tables" } # This is a (hopefully) temporary workaround until my PR is merged
