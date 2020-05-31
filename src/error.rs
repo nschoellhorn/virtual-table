@@ -1,5 +1,5 @@
-use crate::{Index, DataType, PrimaryKey};
-use std::fmt::{Formatter, Display, Result as FmtResult};
+use crate::{DataType, Index, PrimaryKey};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Eq, PartialEq)]
 pub enum VirtualTableError {

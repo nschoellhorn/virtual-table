@@ -1,11 +1,11 @@
 mod error;
 
+use crate::error::VirtualTableError;
 use linked_hash_map::LinkedHashMap;
-use prettytable::{Cell as PCell, Row as PRow, Table as PTable, Attr};
+use prettytable::{Attr, Cell as PCell, Row as PRow, Table as PTable};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use uuid::Uuid;
-use crate::error::VirtualTableError;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Column {
@@ -31,11 +31,7 @@ impl Column {
         }
     }
 
-    pub(crate) fn set_cell(
-        &mut self,
-        index: Index,
-        cell: Cell,
-    ) -> Result<(), VirtualTableError> {
+    pub(crate) fn set_cell(&mut self, index: Index, cell: Cell) -> Result<(), VirtualTableError> {
         if self.data_type != cell.data_type {
             return Result::Err(VirtualTableError::InvalidDataType(
                 self.identifier.clone(),
@@ -46,7 +42,7 @@ impl Column {
 
         // If we don't allow null values in this column, we need to throw an error
         if !self.is_nullable && cell.inner == TableValue::Null {
-            return Result::Err(VirtualTableError::InvalidNullValue(self.identifier.clone()))
+            return Result::Err(VirtualTableError::InvalidNullValue(self.identifier.clone()));
         }
 
         self.values.insert(index, cell);
@@ -94,7 +90,9 @@ impl Table {
 
         let new_index = self.keys.len();
         self.keys.insert(row.primary_key, new_index);
-        let errors = row.cells.into_iter()
+        let errors = row
+            .cells
+            .into_iter()
             .map(|(identifier, cell_option)| {
                 let column_option = self.columns.get_mut(&identifier);
                 if column_option.is_none() {
@@ -109,7 +107,7 @@ impl Table {
                     None => Cell {
                         data_type: col.data_type,
                         inner: TableValue::Null,
-                    }
+                    },
                 };
 
                 col.set_cell(new_index, cell).err()
@@ -130,11 +128,14 @@ impl Table {
         mut definitions: Vec<ColumnDefinition>,
     ) -> LinkedHashMap<String, Column> {
         // Extend the definitions by a first column "ID" which contains the PK
-        definitions.insert(0, ColumnDefinition {
-            data_type: DataType::Uuid,
-            is_nullable: false,
-            identifier: String::from("ID"),
-        });
+        definitions.insert(
+            0,
+            ColumnDefinition {
+                data_type: DataType::Uuid,
+                is_nullable: false,
+                identifier: String::from("ID"),
+            },
+        );
 
         definitions
             .into_iter()
@@ -156,7 +157,9 @@ impl Table {
 
         let row_index = self.keys.get(&update_row.primary_key).unwrap().clone();
 
-        let errors = update_row.cells.into_iter()
+        let errors = update_row
+            .cells
+            .into_iter()
             .map(|(identifier, cell_option)| {
                 // if we see a None cell in the update row, we ignore it since that means the cell should not be updated (= partial update)
                 if cell_option.is_none() {
@@ -202,9 +205,11 @@ impl Display for Table {
         let header_row = PRow::new(
             self.columns
                 .keys()
-                .map(|identifier| PCell::new(identifier)
-                    .with_style(Attr::Bold)
-                    .with_style(Attr::ForegroundColor(prettytable::color::GREEN)))
+                .map(|identifier| {
+                    PCell::new(identifier)
+                        .with_style(Attr::Bold)
+                        .with_style(Attr::ForegroundColor(prettytable::color::GREEN))
+                })
                 .collect(),
         );
         display_table.set_titles(header_row);
@@ -241,26 +246,27 @@ impl Row {
     pub fn create(table: &Table, primary_key: PrimaryKey) -> Self {
         Row {
             primary_key,
-            cells: table.columns.iter().map(|(identifier, column)| {
-                let val = if identifier == "ID" { // TODO: This is not very nice, should redo this.
-                    Some(Cell {
-                        data_type: column.data_type,
-                        inner: TableValue::Uuid(primary_key),
-                    })
-                } else {
-                    None
-                };
+            cells: table
+                .columns
+                .iter()
+                .map(|(identifier, column)| {
+                    let val = if identifier == "ID" {
+                        // TODO: This is not very nice, should redo this.
+                        Some(Cell {
+                            data_type: column.data_type,
+                            inner: TableValue::Uuid(primary_key),
+                        })
+                    } else {
+                        None
+                    };
 
-                (identifier.clone(), val)
-            }).collect(),
+                    (identifier.clone(), val)
+                })
+                .collect(),
         }
     }
 
-    pub fn set_cell(
-        &mut self,
-        column_identifier: String,
-        cell: Cell,
-    ) {
+    pub fn set_cell(&mut self, column_identifier: String, cell: Cell) {
         self.cells.insert(column_identifier, Some(cell));
     }
 }
@@ -326,8 +332,8 @@ impl From<&str> for TableValue {
 }
 
 pub trait IntoCell
-    where
-        Self: Clone,
+where
+    Self: Clone,
 {
     fn into_cell(self) -> Cell;
 }
@@ -466,7 +472,11 @@ mod tests {
         let result = table.create_row(empty_row);
         assert!(result.is_err());
         let errs = result.unwrap_err();
-        assert!(errs.contains(&VirtualTableError::InvalidDataType(String::from("first_name"), DataType::String, DataType::Integer)))
+        assert!(errs.contains(&VirtualTableError::InvalidDataType(
+            String::from("first_name"),
+            DataType::String,
+            DataType::Integer
+        )))
     }
 
     #[test]
@@ -478,7 +488,15 @@ mod tests {
 
         assert!(result.is_err());
         let errs = result.unwrap_err();
-        assert!(errs.contains(&VirtualTableError::InvalidNullValue(String::from("first_name"))));
-        assert!(errs.contains(&VirtualTableError::InvalidNullValue(String::from("last_name"))));
+        assert!(
+            errs.contains(&VirtualTableError::InvalidNullValue(String::from(
+                "first_name"
+            )))
+        );
+        assert!(
+            errs.contains(&VirtualTableError::InvalidNullValue(String::from(
+                "last_name"
+            )))
+        );
     }
 }
