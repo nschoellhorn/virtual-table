@@ -1,6 +1,6 @@
-use crate::{Table, DataType};
-use std::fmt::{Display, Formatter, Result as FmtResult};
+use crate::{DataType, Table};
 use prettytable::{Attr, Cell as PCell, Row as PRow, Table as PTable};
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 impl Display for Table {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
