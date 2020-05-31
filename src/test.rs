@@ -2,6 +2,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 use virtual_table::error::VirtualTableError;
 use virtual_table::*;
+use virtual_table::query::ColumnSpecification;
 
 fn create_demo_table() -> Table {
     Table::create(
@@ -129,4 +130,37 @@ fn it_rejects_nulled_values_that_are_defined_as_not_nullable_in_the_column() {
             "last_name"
         )))
     );
+}
+
+#[test]
+fn it_can_fetch_rows_with_all_columns_via_primary_key() {
+    let mut table = create_demo_table();
+
+    let pk = Uuid::from_str("797724d9-491c-46ac-981c-566d6d65b199").unwrap();
+    let mut row = Row::create(&table, pk);
+    row.set_cell(String::from("first_name"), "first".into_cell());
+    row.set_cell(String::from("last_name"), "last".into_cell());
+    row.set_cell(String::from("age"), 69.into_cell());
+
+    table.create_row(row.clone());
+
+    assert_eq!(row, table.find_row(&pk, ColumnSpecification::All).expect("Expected a value here."));
+}
+
+#[test]
+fn it_can_fetch_rows_with_selected_columns_via_primary_key() {
+    let mut table = create_demo_table();
+
+    let pk = Uuid::from_str("797724d9-491c-46ac-981c-566d6d65b199").unwrap();
+    let mut row = Row::create(&table, pk);
+    row.set_cell(String::from("first_name"), "first".into_cell());
+    row.set_cell(String::from("last_name"), "last".into_cell());
+    row.set_cell(String::from("age"), 69.into_cell());
+
+    table.create_row(row.clone());
+
+    let mut expected_row = Row::create(&table, pk);
+    expected_row.set_cell(String::from("age"), 69.into_cell());
+
+    assert_eq!(expected_row, table.find_row(&pk, ColumnSpecification::Some(vec![String::from("age")])).expect("Expected a value here."));
 }

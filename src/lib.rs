@@ -1,10 +1,12 @@
 pub mod error;
 pub mod format;
+pub mod query;
 
 use crate::error::VirtualTableError;
 use linked_hash_map::LinkedHashMap;
 use std::collections::HashMap;
 use uuid::Uuid;
+use crate::query::ColumnSpecification;
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct Column {
@@ -186,6 +188,38 @@ impl Table {
         Result::Ok(())
     }
 
+    pub fn find_row(&self, key: &PrimaryKey, column_specification: ColumnSpecification) -> Option<Row> {
+        let row_index = *self.keys.get(key)?;
+
+        let fetch_columns: Vec<&Column> = match column_specification {
+            ColumnSpecification::All => self.columns.values().collect(),
+            ColumnSpecification::Some(column_names) => {
+                self.columns
+                    .iter()
+                    .filter_map(|(identifier, column)| {
+                        if column_names.contains(identifier) {
+                            return Some(column);
+                        }
+
+                        None
+                    })
+                    .collect()
+            }
+        };
+
+        let mut row = Row::create(&self, *key);
+        fetch_columns.iter().for_each(|column| {
+            let value = column.value_at(row_index).expect("TODO: Implement error handling here.");
+
+            row.set_cell(column.identifier.clone(), Cell {
+                data_type: column.data_type,
+                inner: value.clone(),
+            })
+        });
+
+        Some(row)
+    }
+
     fn rollback_at_index(&mut self, key: &PrimaryKey, index: Index) {
         self.columns.iter_mut().for_each(|(_, col)| {
             col.destroy_cell(index);
@@ -200,7 +234,7 @@ pub struct ColumnDefinition {
     pub is_nullable: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct Row {
     primary_key: PrimaryKey,
     cells: HashMap<String, Option<Cell>>,
@@ -283,8 +317,8 @@ impl From<&str> for TableValue {
 }
 
 pub trait IntoCell
-where
-    Self: Clone,
+    where
+        Self: Clone,
 {
     fn into_cell(self) -> Cell;
 }
