@@ -92,7 +92,7 @@ impl Table {
         let errors = row
             .cells
             .into_iter()
-            .map(|(identifier, cell_option)| {
+            .flat_map(|(identifier, cell_option)| {
                 let column_option = self.columns.get_mut(&identifier);
                 if column_option.is_none() {
                     return Some(VirtualTableError::UnknownColumn(String::from(identifier)));
@@ -111,7 +111,6 @@ impl Table {
 
                 col.set_cell(new_index, cell).err()
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         if !errors.is_empty() {
